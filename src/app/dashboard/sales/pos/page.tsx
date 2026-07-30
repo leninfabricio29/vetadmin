@@ -303,7 +303,7 @@ export default function POSPage() {
         </div>
 
         {/* Selected Cart Items Table */}
-        <Card className="flex-1 flex flex-col overflow-hidden" title="Resumen del Pedido">
+        <Card className="flex-1 flex flex-col overflow-hidden min-h-0" bodyClassName="flex-1 flex flex-col overflow-hidden min-h-0 p-4" title="Resumen del Pedido">
           <div className="flex-1 overflow-y-auto min-h-0 pr-1">
             {items.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-400">
@@ -312,13 +312,13 @@ export default function POSPage() {
               </div>
             ) : (
               <table className="w-full text-left text-xs">
-                <thead>
+                <thead className="sticky top-0 bg-white z-10">
                   <tr className="text-zinc-500 font-semibold border-b border-zinc-100 pb-2">
-                    <th className="pb-2">Ítem</th>
-                    <th className="pb-2 text-center">Cantidad</th>
-                    <th className="pb-2 text-right">Precio</th>
-                    <th className="pb-2 text-right">Subtotal</th>
-                    <th className="pb-2 text-right"></th>
+                    <th className="pb-2 bg-white">Ítem</th>
+                    <th className="pb-2 text-center bg-white">Cantidad</th>
+                    <th className="pb-2 text-right bg-white">Precio</th>
+                    <th className="pb-2 text-right bg-white">Subtotal</th>
+                    <th className="pb-2 text-right bg-white"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-50">
