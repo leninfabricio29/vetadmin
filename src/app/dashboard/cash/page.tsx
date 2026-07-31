@@ -14,7 +14,7 @@ import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { openRegisterSchema, closeRegisterSchema, manualMovementSchema } from '@/src/validators';
-import { Plus, Power, HelpCircle, ArrowUpRight, ArrowDownRight, Wallet, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Power, HelpCircle, ArrowUpRight, ArrowDownRight, Wallet, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Swal from 'sweetalert2';
@@ -160,13 +160,20 @@ export default function CashRegisterPage() {
         </div>
       ) : isOpen && activeRegister ? (
         <div className="space-y-6">
+          <div className="flex items-center gap-2.5 p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl text-amber-900 text-xs">
+            <Info className="h-4 w-4 shrink-0 text-amber-600" />
+            <span>
+              <b>Control de Arqueo Físico:</b> La caja diaria contabiliza <b>exclusivamente el dinero en efectivo</b>. Las ventas cobradas con <b>Tarjeta</b> o <b>Transferencia</b> van directamente a las cuentas bancarias de la clínica y no afectan el dinero físico del cajón.
+            </span>
+          </div>
+
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
             <Card>
-              <p className="text-[10px] font-semibold text-zinc-500 uppercase">Monto Inicial</p>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase">Monto Inicial (Efectivo)</p>
               <p className="text-lg font-bold text-zinc-900 mt-1">${activeRegister.montoInicial.toFixed(2)}</p>
             </Card>
             <Card>
-              <p className="text-[10px] font-semibold text-zinc-500 uppercase">Ventas</p>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase">Ventas en Efectivo</p>
               <p className="text-lg font-bold text-zinc-900 mt-1 text-green-700">+${activeRegister.ventas.toFixed(2)}</p>
             </Card>
             <Card>
@@ -178,7 +185,7 @@ export default function CashRegisterPage() {
               <p className="text-lg font-bold text-zinc-900 mt-1 text-red-600">-${activeRegister.egresos.toFixed(2)}</p>
             </Card>
             <Card className="bg-zinc-900 border-zinc-950 text-white">
-              <p className="text-[10px] font-semibold text-zinc-400 uppercase">Efectivo Esperado</p>
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase">Efectivo Esperado en Caja</p>
               <p className="text-lg font-bold mt-1">${activeRegister.efectivoEsperado.toFixed(2)}</p>
             </Card>
           </div>

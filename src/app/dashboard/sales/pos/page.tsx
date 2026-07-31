@@ -165,10 +165,6 @@ export default function POSPage() {
     }
 
     if (paymentMethod === 'Transferencia') {
-      if (!uploadedComprobanteUrl) {
-        toast.error('Debe cargar la imagen del comprobante para cobros con transferencia.');
-        return;
-      }
       if (!referencia.trim()) {
         toast.error('Debe ingresar el código de referencia de la transferencia.');
         return;
@@ -555,14 +551,14 @@ export default function POSPage() {
               {paymentMethod === 'Transferencia' && (
                 <div className="space-y-3 p-3 border rounded-lg bg-zinc-50/50">
                   <Input
-                    label="Código de Referencia"
+                    label="Código de Referencia *"
                     type="text"
                     placeholder="Ej. TX-9842"
                     value={referencia}
                     onChange={(e) => setReferencia(e.target.value)}
                   />
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-semibold text-zinc-700 uppercase tracking-wider">Cargar Comprobante</label>
+                    <label className="text-[11px] font-semibold text-zinc-700 uppercase tracking-wider">Cargar Comprobante (Opcional)</label>
                     <input
                       type="file"
                       accept="image/*"

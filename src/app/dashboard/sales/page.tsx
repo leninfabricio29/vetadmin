@@ -304,7 +304,7 @@ export default function SalesHistoryPage() {
               {(selectedSale.gananciaPrincipal !== undefined || selectedSale.gananciaSecundario !== undefined) && (
                 <div className="w-full mt-2 pt-2 border-t border-dashed border-zinc-200 text-[10px] text-zinc-400 flex flex-col items-end gap-1 select-none">
                   <div className="flex gap-4">
-                    <span>Comisión Principal (Luis):</span>
+                    <span>Comisión Principal:</span>
                     <span className="font-bold text-zinc-700">${(selectedSale.gananciaPrincipal || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex gap-4">
