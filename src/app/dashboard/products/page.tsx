@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProducts } from '../../../hooks/useProducts';
 import { useCategories } from '../../../hooks/useCategories';
 import { Button } from '../../../components/ui/Button';
@@ -16,7 +16,7 @@ import { Skeleton } from '../../../components/ui/Skeleton';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { productSchema } from '../../../validators';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import Swal from 'sweetalert2';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
@@ -30,6 +30,13 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const {
     register,
@@ -147,6 +154,29 @@ export default function ProductsPage() {
       p.proveedor.toLowerCase().includes(search.toLowerCase())
   );
 
+  const totalRecords = filteredProducts.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalRecords);
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages: (number | '...')[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (safePage > 3) pages.push('...');
+      const start = Math.max(2, safePage - 1);
+      const end = Math.min(totalPages - 1, safePage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (safePage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
   const categoryOptions = categories.map((c) => ({
     label: c.nombre,
     value: c._id,
@@ -171,7 +201,7 @@ export default function ProductsPage() {
       </div>
 
       <Card>
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="w-full sm:max-w-xs">
             <Input
               type="text"
@@ -179,6 +209,19 @@ export default function ProductsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-zinc-500 shrink-0">
+            <span>Mostrar</span>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+              className="border border-zinc-200 rounded-lg px-2 py-1.5 text-xs text-zinc-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            >
+              {[10, 25, 50, 100].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+            <span>por página</span>
           </div>
         </div>
       </Card>
@@ -210,7 +253,7 @@ export default function ProductsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-50">
-                {filteredProducts.map((p) => {
+                {paginatedProducts.map((p) => {
                   const catName = typeof p.categoría === 'object' ? p.categoría.nombre : 'General';
                   return (
                     <tr key={p._id} className="text-zinc-650 hover:bg-zinc-50/30">
@@ -245,6 +288,47 @@ export default function ProductsPage() {
                 })}
               </tbody>
             </table>
+          </div>
+          {/* Pagination Footer */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3 border-t border-zinc-100 bg-zinc-50/50">
+            <p className="text-xs text-zinc-500">
+              Mostrando <span className="font-semibold text-zinc-700">{totalRecords === 0 ? 0 : startIndex + 1}</span>–<span className="font-semibold text-zinc-700">{endIndex}</span> de <span className="font-semibold text-zinc-700">{totalRecords}</span> registros
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safePage === 1}
+                className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Página anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {getPageNumbers().map((page, idx) =>
+                page === '...' ? (
+                  <span key={`ellipsis-${idx}`} className="px-2 text-xs text-zinc-400">…</span>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page as number)}
+                    className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-medium transition-colors ${
+                      safePage === page
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-zinc-600 hover:bg-zinc-100'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage === totalPages}
+                className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Página siguiente"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCashRegister } from '@/src/hooks/useCashRegister';
 import { useRegisterStore } from '@/src/store/register.store';
 import { Card } from '@/src/components/ui/Card';
@@ -14,7 +14,7 @@ import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { openRegisterSchema, closeRegisterSchema, manualMovementSchema } from '@/src/validators';
-import { Plus, Power, HelpCircle, ArrowUpRight, ArrowDownRight, Wallet } from 'lucide-react';
+import { Plus, Power, HelpCircle, ArrowUpRight, ArrowDownRight, Wallet, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Swal from 'sweetalert2';
@@ -44,6 +44,36 @@ export default function CashRegisterPage() {
   const [isOpeningModalOpen, setIsOpeningModalOpen] = useState(false);
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
+
+  // Pagination for movements table
+  const [movPage, setMovPage] = useState(1);
+  const [movPageSize, setMovPageSize] = useState(10);
+  // Pagination for registers history table
+  const [regPage, setRegPage] = useState(1);
+  const [regPageSize, setRegPageSize] = useState(10);
+
+  const makePagination = <T,>(data: T[], page: number, size: number) => {
+    const total = data.length;
+    const totalPages = Math.max(1, Math.ceil(total / size));
+    const safePg = Math.min(page, totalPages);
+    const start = (safePg - 1) * size;
+    const end = Math.min(start + size, total);
+    const pageNums = (): (number | '...')[] => {
+      const pages: (number | '...')[] = [];
+      if (totalPages <= 7) { for (let i = 1; i <= totalPages; i++) pages.push(i); }
+      else {
+        pages.push(1);
+        if (safePg > 3) pages.push('...');
+        const s = Math.max(2, safePg - 1);
+        const e = Math.min(totalPages - 1, safePg + 1);
+        for (let i = s; i <= e; i++) pages.push(i);
+        if (safePg < totalPages - 2) pages.push('...');
+        pages.push(totalPages);
+      }
+      return pages;
+    };
+    return { total, totalPages, safePg, start, end, paged: data.slice(start, end), pageNums };
+  };
 
   const openForm = useForm<OpenRegisterInputs>({ resolver: zodResolver(openRegisterSchema) as any });
   const closeForm = useForm<CloseRegisterInputs>({ resolver: zodResolver(closeRegisterSchema) as any });
@@ -170,46 +200,59 @@ export default function CashRegisterPage() {
               </div>
             ) : movements.length === 0 ? (
               <div className="text-center py-8 text-xs text-zinc-450">No hay movimientos manuales registrados en este turno.</div>
-            ) : (
-              <div className="overflow-x-auto border border-zinc-200 rounded-lg">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="text-xs font-semibold text-zinc-500 border-b border-zinc-150 bg-zinc-50/50">
-                      <th className="px-4 py-2.5">Tipo</th>
-                      <th className="px-4 py-2.5">Concepto</th>
-                      <th className="px-4 py-2.5">Descripción</th>
-                      <th className="px-4 py-2.5">Fecha / Hora</th>
-                      <th className="px-4 py-2.5 text-right">Monto</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-50">
-                    {movements.map((mov) => (
-                      <tr key={mov._id} className="text-zinc-650 hover:bg-zinc-50/30">
-                        <td className="px-4 py-3 font-semibold text-xs">
-                          {mov.tipo === 'Ingreso' ? (
-                            <span className="text-green-700 inline-flex items-center gap-1">
-                              <ArrowUpRight className="h-3.5 w-3.5" /> Ingreso
-                            </span>
-                          ) : (
-                            <span className="text-red-700 inline-flex items-center gap-1">
-                              <ArrowDownRight className="h-3.5 w-3.5" /> Egreso
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-zinc-900 font-medium">{mov.concepto}</td>
-                        <td className="px-4 py-3 text-xs">{mov.descripción || 'N/A'}</td>
-                        <td className="px-4 py-3 text-xs">
-                          {format(new Date(mov.createdAt || ''), 'h:mm a', { locale: es })}
-                        </td>
-                        <td className={`px-4 py-3 text-right font-bold ${mov.tipo === 'Ingreso' ? 'text-green-700' : 'text-red-700'}`}>
-                          {mov.tipo === 'Ingreso' ? '+' : '-'}${mov.monto.toFixed(2)}
-                        </td>
+            ) : (() => {
+              const { total, totalPages: tp, safePg, start, end, paged, pageNums } = makePagination(movements, movPage, movPageSize);
+              return (
+                <div className="overflow-x-auto border border-zinc-200 rounded-lg">
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-zinc-100 bg-zinc-50/50">
+                    <p className="text-xs text-zinc-500">Mostrando <span className="font-semibold text-zinc-700">{total === 0 ? 0 : start + 1}</span>–<span className="font-semibold text-zinc-700">{end}</span> de <span className="font-semibold text-zinc-700">{total}</span></p>
+                    <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                      <span>Mostrar</span>
+                      <select value={movPageSize} onChange={(e) => { setMovPageSize(Number(e.target.value)); setMovPage(1); }} className="border border-zinc-200 rounded-md px-1.5 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
+                        {[5, 10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="text-xs font-semibold text-zinc-500 border-b border-zinc-150 bg-zinc-50/50">
+                        <th className="px-4 py-2.5">Tipo</th>
+                        <th className="px-4 py-2.5">Concepto</th>
+                        <th className="px-4 py-2.5">Descripción</th>
+                        <th className="px-4 py-2.5">Fecha / Hora</th>
+                        <th className="px-4 py-2.5 text-right">Monto</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody className="divide-y divide-zinc-50">
+                      {paged.map((mov) => (
+                        <tr key={mov._id} className="text-zinc-650 hover:bg-zinc-50/30">
+                          <td className="px-4 py-3 font-semibold text-xs">
+                            {mov.tipo === 'Ingreso' ? (
+                              <span className="text-green-700 inline-flex items-center gap-1"><ArrowUpRight className="h-3.5 w-3.5" /> Ingreso</span>
+                            ) : (
+                              <span className="text-red-700 inline-flex items-center gap-1"><ArrowDownRight className="h-3.5 w-3.5" /> Egreso</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-zinc-900 font-medium">{mov.concepto}</td>
+                          <td className="px-4 py-3 text-xs">{mov.descripción || 'N/A'}</td>
+                          <td className="px-4 py-3 text-xs">{format(new Date(mov.createdAt || ''), 'h:mm a', { locale: es })}</td>
+                          <td className={`px-4 py-3 text-right font-bold ${mov.tipo === 'Ingreso' ? 'text-green-700' : 'text-red-700'}`}>
+                            {mov.tipo === 'Ingreso' ? '+' : '-'}${mov.monto.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {tp > 1 && (
+                    <div className="flex items-center justify-end gap-1 px-3 py-2 border-t border-zinc-100">
+                      <button onClick={() => setMovPage((p) => Math.max(1, p - 1))} disabled={safePg === 1} className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"><ChevronLeft className="h-4 w-4" /></button>
+                      {pageNums().map((pg, i) => pg === '...' ? <span key={`m-${i}`} className="px-1 text-xs text-zinc-400">…</span> : <button key={pg} onClick={() => setMovPage(pg as number)} className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-medium transition-colors ${safePg === pg ? 'bg-indigo-600 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}>{pg}</button>)}
+                      <button onClick={() => setMovPage((p) => Math.min(tp, p + 1))} disabled={safePg === tp} className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"><ChevronRight className="h-4 w-4" /></button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </Card>
         </div>
       ) : (
@@ -236,56 +279,57 @@ export default function CashRegisterPage() {
           </div>
         ) : registers.length === 0 ? (
           <div className="text-center py-6 text-xs text-zinc-450">No hay cierres registrados.</div>
-        ) : (
-          <div className="overflow-x-auto border border-zinc-200 rounded-lg">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs font-semibold text-zinc-500 border-b border-zinc-150 bg-zinc-50/50">
-                  <th className="px-4 py-2.5">Apertura</th>
-                  <th className="px-4 py-2.5">Cierre</th>
-                  <th className="px-4 py-2.5">Monto Inicial</th>
-                  <th className="px-4 py-2.5">Esperado</th>
-                  <th className="px-4 py-2.5">Declarado</th>
-                  <th className="px-4 py-2.5">Diferencia</th>
-                  <th className="px-4 py-2.5">Estado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-50">
-                {registers.map((reg) => (
-                  <tr key={reg._id} className="text-zinc-650 hover:bg-zinc-50/30">
-                    <td className="px-4 py-3 text-xs">
-                      {format(new Date(reg.fechaApertura), "dd MMM, hh:mm a", { locale: es })}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {reg.fechaCierre
-                        ? format(new Date(reg.fechaCierre), "dd MMM, hh:mm a", { locale: es })
-                        : 'Abierta'}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-medium text-zinc-900">${reg.montoInicial.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-xs font-medium text-zinc-900">${reg.efectivoEsperado.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-xs font-bold text-zinc-900">
-                      {reg.efectivoContado !== undefined ? `$${reg.efectivoContado.toFixed(2)}` : 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold">
-                      {reg.diferencia !== undefined ? (
-                        <span className={reg.diferencia >= 0 ? 'text-green-700' : 'text-red-700'}>
-                          ${reg.diferencia.toFixed(2)}
-                        </span>
-                      ) : (
-                        'N/A'
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={reg.estado === 'Abierta' ? 'success' : 'neutral'}>
-                        {reg.estado}
-                      </Badge>
-                    </td>
+        ) : (() => {
+          const { total: rTotal, totalPages: rTp, safePg: rSafePg, start: rStart, end: rEnd, paged: rPaged, pageNums: rPageNums } = makePagination(registers, regPage, regPageSize);
+          return (
+            <div className="overflow-x-auto border border-zinc-200 rounded-lg">
+              <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-zinc-100 bg-zinc-50/50">
+                <p className="text-xs text-zinc-500">Mostrando <span className="font-semibold text-zinc-700">{rTotal === 0 ? 0 : rStart + 1}</span>–<span className="font-semibold text-zinc-700">{rEnd}</span> de <span className="font-semibold text-zinc-700">{rTotal}</span> turnos</p>
+                <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                  <span>Mostrar</span>
+                  <select value={regPageSize} onChange={(e) => { setRegPageSize(Number(e.target.value)); setRegPage(1); }} className="border border-zinc-200 rounded-md px-1.5 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
+                    {[5, 10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+              </div>
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-xs font-semibold text-zinc-500 border-b border-zinc-150 bg-zinc-50/50">
+                    <th className="px-4 py-2.5">Apertura</th>
+                    <th className="px-4 py-2.5">Cierre</th>
+                    <th className="px-4 py-2.5">Monto Inicial</th>
+                    <th className="px-4 py-2.5">Esperado</th>
+                    <th className="px-4 py-2.5">Declarado</th>
+                    <th className="px-4 py-2.5">Diferencia</th>
+                    <th className="px-4 py-2.5">Estado</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody className="divide-y divide-zinc-50">
+                  {rPaged.map((reg) => (
+                    <tr key={reg._id} className="text-zinc-650 hover:bg-zinc-50/30">
+                      <td className="px-4 py-3 text-xs">{format(new Date(reg.fechaApertura), "dd MMM, hh:mm a", { locale: es })}</td>
+                      <td className="px-4 py-3 text-xs">{reg.fechaCierre ? format(new Date(reg.fechaCierre), "dd MMM, hh:mm a", { locale: es }) : 'Abierta'}</td>
+                      <td className="px-4 py-3 text-xs font-medium text-zinc-900">${reg.montoInicial.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-xs font-medium text-zinc-900">${reg.efectivoEsperado.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-xs font-bold text-zinc-900">{reg.efectivoContado !== undefined ? `$${reg.efectivoContado.toFixed(2)}` : 'N/A'}</td>
+                      <td className="px-4 py-3 text-xs font-semibold">
+                        {reg.diferencia !== undefined ? <span className={reg.diferencia >= 0 ? 'text-green-700' : 'text-red-700'}>${reg.diferencia.toFixed(2)}</span> : 'N/A'}
+                      </td>
+                      <td className="px-4 py-3"><Badge variant={reg.estado === 'Abierta' ? 'success' : 'neutral'}>{reg.estado}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {rTp > 1 && (
+                <div className="flex items-center justify-end gap-1 px-3 py-2 border-t border-zinc-100">
+                  <button onClick={() => setRegPage((p) => Math.max(1, p - 1))} disabled={rSafePg === 1} className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"><ChevronLeft className="h-4 w-4" /></button>
+                  {rPageNums().map((pg, i) => pg === '...' ? <span key={`r-${i}`} className="px-1 text-xs text-zinc-400">…</span> : <button key={pg} onClick={() => setRegPage(pg as number)} className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-medium transition-colors ${rSafePg === pg ? 'bg-indigo-600 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}>{pg}</button>)}
+                  <button onClick={() => setRegPage((p) => Math.min(rTp, p + 1))} disabled={rSafePg === rTp} className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"><ChevronRight className="h-4 w-4" /></button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </Card>
 
       {/* Aperture Modal */}

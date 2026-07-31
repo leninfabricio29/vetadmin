@@ -35,6 +35,12 @@ export const useReports = (filters?: { startDate?: string; endDate?: string; lim
     enabled: !!startDate && !!endDate,
   });
 
+  const operationalCostsQuery = useQuery({
+    queryKey: ['reports', 'operational-costs', startDate, endDate],
+    queryFn: () => reportService.getOperationalCosts(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
+
   return {
     lowStock: lowStockQuery.data || [],
     isLoadingLowStock: lowStockQuery.isLoading,
@@ -46,6 +52,8 @@ export const useReports = (filters?: { startDate?: string; endDate?: string; lim
     isLoadingSalesByDate: salesByDateQuery.isLoading,
     inventoryMovements: inventoryMovementsQuery.data || [],
     isLoadingInventory: inventoryMovementsQuery.isLoading,
+    operationalCosts: operationalCostsQuery.data || [],
+    isLoadingOperationalCosts: operationalCostsQuery.isLoading,
     refetchAll: () => {
       lowStockQuery.refetch();
       topProductsQuery.refetch();
@@ -53,6 +61,7 @@ export const useReports = (filters?: { startDate?: string; endDate?: string; lim
         cashFlowQuery.refetch();
         salesByDateQuery.refetch();
         inventoryMovementsQuery.refetch();
+        operationalCostsQuery.refetch();
       }
     },
   };

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSales } from '../../../hooks/useSales';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
@@ -12,7 +12,7 @@ import { ErrorState } from '../../../components/ui/ErrorState';
 import { Input } from '../../../components/ui/Input';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { FileText, Eye, AlertOctagon, Search } from 'lucide-react';
+import { FileText, Eye, AlertOctagon, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function SalesHistoryPage() {
@@ -21,6 +21,10 @@ export default function SalesHistoryPage() {
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => { setCurrentPage(1); }, [search]);
 
   const handleOpenDetail = (sale: any) => {
     setSelectedSale(sale);
@@ -56,6 +60,28 @@ export default function SalesHistoryPage() {
     return clientName.includes(search.toLowerCase()) || sale._id.toLowerCase().includes(search.toLowerCase());
   });
 
+  const totalRecords = filteredSales.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalRecords);
+  const paginatedSales = filteredSales.slice(startIndex, endIndex);
+
+  const getPageNumbers = (): (number | '...')[] => {
+    const pages: (number | '...')[] = [];
+    if (totalPages <= 7) { for (let i = 1; i <= totalPages; i++) pages.push(i); }
+    else {
+      pages.push(1);
+      if (safePage > 3) pages.push('...');
+      const start = Math.max(2, safePage - 1);
+      const end = Math.min(totalPages - 1, safePage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (safePage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
   return (
     <div className="space-y-6 select-none">
       <div>
@@ -64,7 +90,7 @@ export default function SalesHistoryPage() {
       </div>
 
       <Card>
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="w-full sm:max-w-xs">
             <div className="relative">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
@@ -76,6 +102,13 @@ export default function SalesHistoryPage() {
                 className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 placeholder-zinc-400"
               />
             </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-zinc-500 shrink-0">
+            <span>Mostrar</span>
+            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="border border-zinc-200 rounded-lg px-2 py-1.5 text-xs text-zinc-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+              {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span>por página</span>
           </div>
         </div>
       </Card>
@@ -106,7 +139,7 @@ export default function SalesHistoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-50">
-                {filteredSales.map((sale) => {
+                {paginatedSales.map((sale) => {
                   const clientName = (sale.cliente && typeof sale.cliente === 'object')
                     ? `${sale.cliente.nombres} ${sale.cliente.apellidos}`
                     : 'Cliente General';
@@ -145,6 +178,14 @@ export default function SalesHistoryPage() {
                 })}
               </tbody>
             </table>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3 border-t border-zinc-100 bg-zinc-50/50">
+            <p className="text-xs text-zinc-500">Mostrando <span className="font-semibold text-zinc-700">{totalRecords === 0 ? 0 : startIndex + 1}</span>–<span className="font-semibold text-zinc-700">{endIndex}</span> de <span className="font-semibold text-zinc-700">{totalRecords}</span> registros</p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1} className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Página anterior"><ChevronLeft className="h-4 w-4" /></button>
+              {getPageNumbers().map((page, idx) => page === '...' ? <span key={`e-${idx}`} className="px-2 text-xs text-zinc-400">…</span> : <button key={page} onClick={() => setCurrentPage(page as number)} className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-medium transition-colors ${safePage === page ? 'bg-indigo-600 text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-100'}`}>{page}</button>)}
+              <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Página siguiente"><ChevronRight className="h-4 w-4" /></button>
+            </div>
           </div>
         </div>
       )}

@@ -165,3 +165,22 @@ export interface IInventoryMovement {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface IOperationalCostDetail {
+  producto: string;
+  proveedor: string;
+  precioCompra: number;
+  precioVenta: number;
+  cantidad: number;
+  costoLinea: number;
+  ventaLinea: number;
+}
+
+export interface IOperationalCostDay {
+  _id: { year: number; month: number; day: number };
+  fecha: string;
+  costoTotal: number;
+  ventaTotal: number;
+  unidadesVendidas: number;
+  detalle: IOperationalCostDetail[];
+}

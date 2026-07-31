@@ -209,6 +209,10 @@ export default function POSPage() {
         p.código.toLowerCase().includes(itemSearch.toLowerCase()))
   );
 
+  const MAX_PRODUCT_RESULTS = 6; // 2 rows of 3 columns
+  const visibleProducts = filteredProducts.slice(0, MAX_PRODUCT_RESULTS);
+  const hiddenProductsCount = filteredProducts.length - visibleProducts.length;
+
   // Filter clients (full match set, used to know how many results exist)
   const filteredClients = clients.filter(
     (c) =>
@@ -266,40 +270,50 @@ export default function POSPage() {
         </Card>
 
         {/* Scrollable products item grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto max-h-[35vh] pr-1">
-          {filteredProducts.map((p) => (
-            <div
-              key={p._id}
-              onClick={() =>
-                addItem({
-                  tipo: 'Producto',
-                  id: p._id,
-                  nombre: p.nombre,
-                  precio: p.precioVenta,
-                  stockMax: p.stock,
-                  código: p.código,
-                  tieneIva: p.tieneIva,
-                  comisiónPrincipal: p.comisiónPrincipal !== undefined ? p.comisiónPrincipal : 100,
-                  comisiónSecundario: p.comisiónSecundario !== undefined ? p.comisiónSecundario : 0,
-                })
-              }
-              className="p-3 border border-zinc-200 bg-white hover:border-zinc-800 rounded-lg cursor-pointer transition-all flex flex-col justify-between text-xs group active:scale-[0.98]"
-            >
-              <div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-[10px] font-mono text-zinc-400 group-hover:text-zinc-650">{p.código}</span>
-                  <Badge variant={p.stock === 0 ? 'danger' : p.stock <= p.stockMínimo ? 'warning' : 'success'} className="px-1.5 py-0">
-                    {p.stock === 0 ? 'Agotado' : `${p.stock} uds`}
-                  </Badge>
+        <div className="flex flex-col gap-2 shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {visibleProducts.map((p) => (
+              <div
+                key={p._id}
+                onClick={() =>
+                  addItem({
+                    tipo: 'Producto',
+                    id: p._id,
+                    nombre: p.nombre,
+                    precio: p.precioVenta,
+                    stockMax: p.stock,
+                    código: p.código,
+                    tieneIva: p.tieneIva,
+                    comisiónPrincipal: p.comisiónPrincipal !== undefined ? p.comisiónPrincipal : 100,
+                    comisiónSecundario: p.comisiónSecundario !== undefined ? p.comisiónSecundario : 0,
+                  })
+                }
+                className="p-3 border border-zinc-200 bg-white hover:border-zinc-800 rounded-lg cursor-pointer transition-all flex flex-col justify-between text-xs group active:scale-[0.98]"
+              >
+                <div>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-[10px] font-mono text-zinc-400 group-hover:text-zinc-650">{p.código}</span>
+                    <Badge variant={p.stock === 0 ? 'danger' : p.stock <= p.stockMínimo ? 'warning' : 'success'} className="px-1.5 py-0">
+                      {p.stock === 0 ? 'Agotado' : `${p.stock} uds`}
+                    </Badge>
+                  </div>
+                  <p className="font-semibold text-zinc-900 mt-1.5 truncate leading-tight group-hover:text-zinc-950">{p.nombre}</p>
                 </div>
-                <p className="font-semibold text-zinc-900 mt-1.5 truncate leading-tight group-hover:text-zinc-950">{p.nombre}</p>
+                <div className="flex justify-between items-center mt-3 pt-2 border-t border-zinc-50">
+                  <span className="text-zinc-500">Precio:</span>
+                  <span className="font-bold text-zinc-900">${p.precioVenta.toFixed(2)}</span>
+                </div>
               </div>
-              <div className="flex justify-between items-center mt-3 pt-2 border-t border-zinc-50">
-                <span className="text-zinc-500">Precio:</span>
-                <span className="font-bold text-zinc-900">${p.precioVenta.toFixed(2)}</span>
-              </div>
+            ))}
+          </div>
+          {hiddenProductsCount > 0 && (
+            <div className="text-center py-1.5 px-3 bg-zinc-100/70 border border-zinc-200/80 rounded-lg text-xs font-semibold text-zinc-600 flex items-center justify-center gap-1.5">
+              <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md bg-zinc-900 text-white text-[10px] font-bold">
+                +{hiddenProductsCount}
+              </span>
+              <span>productos más. Usa el buscador para afinar la búsqueda.</span>
             </div>
-          ))}
+          )}
         </div>
 
         {/* Selected Cart Items Table */}
