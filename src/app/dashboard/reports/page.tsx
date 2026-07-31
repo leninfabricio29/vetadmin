@@ -570,11 +570,10 @@ export default function ReportsPage() {
                   const secundarioAmt = sale.gananciaSecundario || 0;
 
                   const userObj = sale.usuario;
-                  const isSecondaryWorker = (userObj && typeof userObj === 'object')
-                    ? userObj.tipoComisión === 'Secundario'
-                    : false;
+                  const isUserObject = typeof userObj === 'object' && userObj !== null;
+                  const isSecondaryWorker = isUserObject && userObj.tipoComisión === 'Secundario';
 
-                  if (isSecondaryWorker && secundarioAmt > 0) {
+                  if (isUserObject && isSecondaryWorker && secundarioAmt > 0) {
                     totalPrincipal += principalAmt;
                     totalSecundario += secundarioAmt;
 
