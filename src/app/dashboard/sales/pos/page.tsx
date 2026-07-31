@@ -27,7 +27,8 @@ import {
   UserPlus,
   ShoppingBag,
   HeartPulse,
-  Printer
+  Printer,
+  X
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import toast from 'react-hot-toast';
@@ -41,6 +42,12 @@ type ClientFormInputs = z.infer<typeof clientSchema>;
 // How many matches to show in the inline client search dropdown before
 // telling the user to keep typing instead of dumping the whole list.
 const MAX_CLIENT_RESULTS = 5;
+
+// How many matches to show in the product search dropdown. This used to be
+// a permanent grid taking ~2 rows of screen space at all times; now it's an
+// overlay that only appears while the user is actively searching, so a
+// slightly larger cap is fine since it doesn't cost any layout space.
+const MAX_PRODUCT_RESULTS = 8;
 
 export default function POSPage() {
   const isCajaOpen = useRegisterStore((state) => state.isOpen);
@@ -104,6 +111,11 @@ export default function POSPage() {
   // Search parameters
   const [itemSearch, setItemSearch] = useState('');
   const [clientSearch, setClientSearch] = useState('');
+  // Keeps the product dropdown open right after adding an item, so the user
+  // doesn't have to retype the query to add several units of the same thing
+  // or a related product. Closed explicitly by clearing the search or
+  // clicking away.
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
 
   const {
     register: registerClient,
@@ -124,6 +136,21 @@ export default function POSPage() {
       setIsClientModalOpen(false);
       resetClientForm();
     } catch (e) {}
+  };
+
+  const handleAddProduct = (p: any) => {
+    addItem({
+      tipo: 'Producto',
+      id: p._id,
+      nombre: p.nombre,
+      precio: p.precioVenta,
+      stockMax: p.stock,
+      código: p.código,
+      tieneIva: p.tieneIva,
+      comisiónPrincipal: p.comisiónPrincipal !== undefined ? p.comisiónPrincipal : 100,
+      comisiónSecundario: p.comisiónSecundario !== undefined ? p.comisiónSecundario : 0,
+    });
+    toast.success(`${p.nombre} agregado al pedido`, { duration: 1200 });
   };
 
   // Confirm and submit sale
@@ -209,9 +236,9 @@ export default function POSPage() {
         p.código.toLowerCase().includes(itemSearch.toLowerCase()))
   );
 
-  const MAX_PRODUCT_RESULTS = 6; // 2 rows of 3 columns
   const visibleProducts = filteredProducts.slice(0, MAX_PRODUCT_RESULTS);
   const hiddenProductsCount = filteredProducts.length - visibleProducts.length;
+  const showProductDropdown = isProductDropdownOpen && itemSearch.trim().length > 0;
 
   // Filter clients (full match set, used to know how many results exist)
   const filteredClients = clients.filter(
@@ -249,80 +276,98 @@ export default function POSPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 select-none h-[calc(100vh-8rem)] grid-rows-[minmax(0,1fr)]">
-      <style dangerouslySetInnerHTML={{ __html: 'main { overflow: hidden !important; }' }} />
-      {/* Left panel: Cart details & search catalog (2/3 width) */}
-      <div className="lg:col-span-2 flex flex-col gap-5 overflow-hidden min-h-0">
-        {/* Search catalog bar */}
-        <Card className="shrink-0 p-4">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-            <div className="w-full relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
-              <input
-                type="text"
-                placeholder="Buscar producto por código o nombre..."
-                value={itemSearch}
-                onChange={(e) => setItemSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 placeholder-zinc-400"
-              />
-            </div>
+    // Height is only pinned to the viewport on large screens where we know
+    // there's enough room for the internal scroll areas to work. Below `lg`
+    // (and on short/small desktop displays where the browser shrinks the
+    // window) the grid falls back to its natural content height, so if
+    // things still don't fit, the page itself scrolls instead of clipping
+    // content with nowhere to go.
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 select-none lg:h-[calc(100vh-8rem)] lg:grid-rows-[minmax(0,1fr)]">
+      {/* Left panel: cart details & product search (2/3 width) */}
+      <div className="lg:col-span-2 flex flex-col gap-4 lg:min-h-0 relative z-20">
+        {/* Product search bar with an overlay dropdown of results, instead of
+            a permanent grid. This is the main space saver: the catalog only
+            takes up screen real-estate while the user is actively typing. */}
+        <Card className="shrink-0 p-4 relative z-30 overflow-visible">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Buscar producto por código o nombre para agregarlo..."
+              value={itemSearch}
+              onChange={(e) => {
+                setItemSearch(e.target.value);
+                setIsProductDropdownOpen(true);
+              }}
+              onFocus={() => setIsProductDropdownOpen(true)}
+              className="w-full pl-9 pr-9 py-2.5 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-zinc-950 focus:border-zinc-950 placeholder-zinc-400"
+            />
+            {itemSearch && (
+              <button
+                type="button"
+                onClick={() => {
+                  setItemSearch('');
+                  setIsProductDropdownOpen(false);
+                }}
+                className="absolute right-2.5 top-2 p-0.5 text-zinc-400 hover:text-zinc-700 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+
+            {showProductDropdown && (
+              <>
+                {/* Click-away backdrop, invisible but catches outside clicks */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsProductDropdownOpen(false)}
+                />
+                <div className="absolute z-50 top-full left-0 mt-1.5 w-full border border-zinc-200 rounded-lg bg-white shadow-xl max-h-[60vh] overflow-y-auto divide-y divide-zinc-50 text-xs">
+                  {visibleProducts.map((p) => (
+                    <div
+                      key={p._id}
+                      onClick={() => {
+                        if (p.stock === 0) return;
+                        handleAddProduct(p);
+                      }}
+                      className={`p-2.5 flex items-center justify-between gap-3 transition-colors ${
+                        p.stock === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-zinc-50 cursor-pointer'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold text-zinc-900 truncate">{p.nombre}</p>
+                        <p className="text-[10px] text-zinc-400 font-mono mt-0.5">{p.código}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant={p.stock === 0 ? 'danger' : p.stock <= p.stockMínimo ? 'warning' : 'success'} className="px-1.5 py-0">
+                          {p.stock === 0 ? 'Agotado' : `${p.stock} uds`}
+                        </Badge>
+                        <span className="font-bold text-zinc-900 w-14 text-right">${p.precioVenta.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {filteredProducts.length === 0 && (
+                    <div className="p-3 text-center text-zinc-400">Producto no encontrado.</div>
+                  )}
+                  {hiddenProductsCount > 0 && (
+                    <div className="p-2 text-center text-zinc-500 bg-zinc-50/70 sticky bottom-0 font-semibold">
+                      +{hiddenProductsCount} {hiddenProductsCount === 1 ? 'resultado más' : 'resultados más'}, sigue escribiendo para acotar
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </Card>
 
-        {/* Scrollable products item grid */}
-        <div className="flex flex-col gap-2 shrink-0">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {visibleProducts.map((p) => (
-              <div
-                key={p._id}
-                onClick={() =>
-                  addItem({
-                    tipo: 'Producto',
-                    id: p._id,
-                    nombre: p.nombre,
-                    precio: p.precioVenta,
-                    stockMax: p.stock,
-                    código: p.código,
-                    tieneIva: p.tieneIva,
-                    comisiónPrincipal: p.comisiónPrincipal !== undefined ? p.comisiónPrincipal : 100,
-                    comisiónSecundario: p.comisiónSecundario !== undefined ? p.comisiónSecundario : 0,
-                  })
-                }
-                className="p-3 border border-zinc-200 bg-white hover:border-zinc-800 rounded-lg cursor-pointer transition-all flex flex-col justify-between text-xs group active:scale-[0.98]"
-              >
-                <div>
-                  <div className="flex justify-between items-center gap-2">
-                    <span className="text-[10px] font-mono text-zinc-400 group-hover:text-zinc-650">{p.código}</span>
-                    <Badge variant={p.stock === 0 ? 'danger' : p.stock <= p.stockMínimo ? 'warning' : 'success'} className="px-1.5 py-0">
-                      {p.stock === 0 ? 'Agotado' : `${p.stock} uds`}
-                    </Badge>
-                  </div>
-                  <p className="font-semibold text-zinc-900 mt-1.5 truncate leading-tight group-hover:text-zinc-950">{p.nombre}</p>
-                </div>
-                <div className="flex justify-between items-center mt-3 pt-2 border-t border-zinc-50">
-                  <span className="text-zinc-500">Precio:</span>
-                  <span className="font-bold text-zinc-900">${p.precioVenta.toFixed(2)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          {hiddenProductsCount > 0 && (
-            <div className="text-center py-1.5 px-3 bg-zinc-100/70 border border-zinc-200/80 rounded-lg text-xs font-semibold text-zinc-600 flex items-center justify-center gap-1.5">
-              <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md bg-zinc-900 text-white text-[10px] font-bold">
-                +{hiddenProductsCount}
-              </span>
-              <span>productos más. Usa el buscador para afinar la búsqueda.</span>
-            </div>
-          )}
-        </div>
-
-        {/* Selected Cart Items Table */}
-        <Card className="flex-1 flex flex-col overflow-hidden min-h-0" bodyClassName="flex-1 flex flex-col overflow-hidden min-h-0 p-4" title="Resumen del Pedido">
-          <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+        {/* Selected Cart Items Table — now gets nearly all of the freed-up
+            vertical space that the permanent product grid used to occupy. */}
+        <Card className="flex-1 flex flex-col lg:overflow-hidden lg:min-h-0" bodyClassName="flex-1 flex flex-col lg:overflow-hidden lg:min-h-0 p-4" title="Resumen del Pedido">
+          <div className="flex-1 lg:overflow-y-auto lg:min-h-0 pr-1">
             {items.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-400">
                 <ShoppingBag className="h-8 w-8 mb-2" />
-                <span className="text-xs">No hay artículos cargados en el pedido.</span>
+                <span className="text-xs">No hay artículos cargados. Usa el buscador de arriba para agregar productos.</span>
               </div>
             ) : (
               <table className="w-full text-left text-xs">
@@ -383,18 +428,18 @@ export default function POSPage() {
 
       {/* Right panel: customer profile & checkout values (1/3 width) */}
       {/*
-        Restructured as its own flex column with two zones:
+        Own flex column with two zones:
           1) a scrollable zone (client card + payment details) that can grow
              as much as it needs (transfer proof preview, notes, etc.)
           2) a fixed footer (totals + "Completar y Cobrar") that never moves
              and is always reachable without hunting for it.
-        `grid-rows-[minmax(0,1fr)]` on the parent grid is what lets this
-        column actually shrink to the available height instead of growing
-        past the viewport (the previous "h-full" had nothing to be a
-        percentage of, since an implicit grid row sizes to its content).
+        On `lg` screens this column is height-constrained and scrolls
+        internally; below `lg` (or when the window itself is too short) it
+        just stacks naturally and the whole page scrolls, so nothing is ever
+        unreachable.
       */}
-      <div className="flex flex-col h-full min-h-0 gap-4">
-        <div className="flex-1 overflow-y-auto min-h-0 pr-1 flex flex-col gap-5">
+      <div className="flex flex-col lg:h-full lg:min-h-0 gap-4">
+        <div className="lg:flex-1 lg:overflow-y-auto lg:min-h-0 pr-1 flex flex-col gap-4">
           {/* Customer Select Card */}
           <Card title="Cliente Facturación" className="shrink-0">
             {client ? (
