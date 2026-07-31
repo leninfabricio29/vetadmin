@@ -187,6 +187,9 @@ export default function CashRegisterPage() {
             <div className="flex justify-between items-center mb-4">
               <span className="text-xs text-zinc-500">
                 Apertura: {format(new Date(activeRegister.fechaApertura), "d 'de' MMMM, h:mm a", { locale: es })}
+                {typeof activeRegister.usuario === 'object' && activeRegister.usuario !== null && (
+                  <span className="ml-2 font-semibold text-zinc-700">· Abierta por: {activeRegister.usuario.nombres} {activeRegister.usuario.apellidos}</span>
+                )}
               </span>
               <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => setIsMovementModalOpen(true)}>
                 Registrar Movimiento Manual

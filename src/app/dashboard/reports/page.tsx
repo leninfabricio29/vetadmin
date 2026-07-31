@@ -556,7 +556,7 @@ export default function ReportsPage() {
               })()}
             </Card>
 
-            {/* Commission splits summaries */}
+{/* Commission splits summaries */}
             {(() => {
               const calculateCommissions = () => {
                 let totalPrincipal = 0;
@@ -569,14 +569,15 @@ export default function ReportsPage() {
                   const principalAmt = sale.gananciaPrincipal || 0;
                   const secundarioAmt = sale.gananciaSecundario || 0;
 
+                  // Las ganancias principal y secundaria se acumulan siempre para el reporte global
+                  totalPrincipal += principalAmt;
+                  totalSecundario += secundarioAmt;
+
                   const userObj = sale.usuario;
                   const isUserObject = typeof userObj === 'object' && userObj !== null;
                   const isSecondaryWorker = isUserObject && userObj.tipoComisión === 'Secundario';
 
-                  if (isUserObject && isSecondaryWorker && secundarioAmt > 0) {
-                    totalPrincipal += principalAmt;
-                    totalSecundario += secundarioAmt;
-
+                  if (isUserObject && isSecondaryWorker) {
                     const userId = userObj._id || 'unknown';
                     const userName = `${userObj.nombres} ${userObj.apellidos}`;
 
@@ -589,9 +590,6 @@ export default function ReportsPage() {
                     }
                     workerCommissions[userId].totalSales += sale.total;
                     workerCommissions[userId].commission += secundarioAmt;
-                  } else {
-                    // Si la venta la realizó el usuario Principal / Admin, toda la ganancia le corresponde al Principal
-                    totalPrincipal += (principalAmt + secundarioAmt);
                   }
                 });
 
