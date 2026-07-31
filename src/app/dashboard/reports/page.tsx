@@ -569,13 +569,17 @@ export default function ReportsPage() {
                   const principalAmt = sale.gananciaPrincipal || 0;
                   const secundarioAmt = sale.gananciaSecundario || 0;
 
-                  totalPrincipal += principalAmt;
-                  totalSecundario += secundarioAmt;
+                  const userObj = sale.usuario;
+                  const isSecondaryWorker = (userObj && typeof userObj === 'object')
+                    ? userObj.tipoComisión === 'Secundario'
+                    : false;
 
-                  if (secundarioAmt > 0) {
-                    const userObj = sale.usuario;
-                    const userId = (userObj && typeof userObj === 'object') ? userObj._id : userObj || 'unknown';
-                    const userName = (userObj && typeof userObj === 'object') ? `${userObj.nombres} ${userObj.apellidos}` : 'Colaborador Secundario';
+                  if (isSecondaryWorker && secundarioAmt > 0) {
+                    totalPrincipal += principalAmt;
+                    totalSecundario += secundarioAmt;
+
+                    const userId = userObj._id || 'unknown';
+                    const userName = `${userObj.nombres} ${userObj.apellidos}`;
 
                     if (!workerCommissions[userId]) {
                       workerCommissions[userId] = {
@@ -586,6 +590,9 @@ export default function ReportsPage() {
                     }
                     workerCommissions[userId].totalSales += sale.total;
                     workerCommissions[userId].commission += secundarioAmt;
+                  } else {
+                    // Si la venta la realizó el usuario Principal / Admin, toda la ganancia le corresponde al Principal
+                    totalPrincipal += (principalAmt + secundarioAmt);
                   }
                 });
 
