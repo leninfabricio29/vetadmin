@@ -31,6 +31,7 @@ interface SalesState {
   addItem: (item: Omit<CartItem, 'cantidad'>) => void;
   removeItem: (id: string, tipo: 'Producto' | 'Servicio') => void;
   updateQuantity: (id: string, tipo: 'Producto' | 'Servicio', cantidad: number) => void;
+  updateItemCommissions: (id: string, tipo: 'Producto' | 'Servicio', comisiónPrincipal: number, comisiónSecundario: number) => void;
   setClient: (client: POSClient | null) => void;
   setDiscount: (discount: number) => void;
   setPaymentMethod: (method: 'Efectivo' | 'Tarjeta' | 'Transferencia') => void;
@@ -86,6 +87,17 @@ export const useSalesStore = create<SalesState>((set, get) => ({
             return i;
           }
           return { ...i, cantidad };
+        }
+        return i;
+      }),
+    });
+  },
+
+  updateItemCommissions: (id, tipo, comisiónPrincipal, comisiónSecundario) => {
+    set({
+      items: get().items.map((i) => {
+        if (i.id === id && i.tipo === tipo) {
+          return { ...i, comisiónPrincipal, comisiónSecundario };
         }
         return i;
       }),

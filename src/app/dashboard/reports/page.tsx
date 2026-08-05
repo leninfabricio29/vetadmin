@@ -16,6 +16,21 @@ import { useUsers } from '../../../hooks/useUsers';
 import { Select } from '../../../components/ui/Select';
 import { useAuthStore } from '../../../store/auth.store';
 
+const parseLocalDate = (dateStr: string | Date): Date => {
+  if (!dateStr) return new Date();
+  if (typeof dateStr === 'string') {
+    const datePart = dateStr.split('T')[0];
+    if (datePart.length === 10 && datePart.includes('-')) {
+      const [y, m, d] = datePart.split('-').map(Number);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+        return new Date(y, m - 1, d, 12, 0, 0);
+      }
+    }
+    return new Date(dateStr);
+  }
+  return dateStr;
+};
+
 export default function ReportsPage() {
   const today = new Date();
   const thirtyDaysAgo = subDays(today, 30);
@@ -298,16 +313,16 @@ export default function ReportsPage() {
 
             if (costViewMode === 'dia') {
               operationalCosts.forEach((d) => {
-                const label = format(new Date(d.fecha), "dd MMM yyyy", { locale: es });
+                const label = format(parseLocalDate(d.fecha), "dd MMM yyyy", { locale: es });
                 grouped.push({ label, key: d.fecha, costoTotal: d.costoTotal, ventaTotal: d.ventaTotal, unidadesVendidas: d.unidadesVendidas, margen: d.ventaTotal - d.costoTotal, days: [d] });
               });
             } else if (costViewMode === 'semana') {
               const weekMap: Record<string, GroupedRow> = {};
               operationalCosts.forEach((d) => {
-                const dt = new Date(d.fecha);
-                const year = dt.getUTCFullYear();
-                const startOfYear = new Date(Date.UTC(year, 0, 1));
-                const weekNum = Math.ceil(((dt.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getUTCDay() + 1) / 7);
+                const dt = parseLocalDate(d.fecha);
+                const year = dt.getFullYear();
+                const startOfYear = new Date(year, 0, 1);
+                const weekNum = Math.ceil(((dt.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
                 const key = `${year}-S${weekNum}`;
                 if (!weekMap[key]) weekMap[key] = { label: `Semana ${weekNum} — ${year}`, key, costoTotal: 0, ventaTotal: 0, unidadesVendidas: 0, margen: 0, days: [] };
                 weekMap[key].costoTotal += d.costoTotal;
@@ -320,7 +335,7 @@ export default function ReportsPage() {
             } else {
               const monthMap: Record<string, GroupedRow> = {};
               operationalCosts.forEach((d) => {
-                const dt = new Date(d.fecha);
+                const dt = parseLocalDate(d.fecha);
                 const key = format(dt, 'yyyy-MM', { locale: es });
                 const label = format(dt, 'MMMM yyyy', { locale: es });
                 if (!monthMap[key]) monthMap[key] = { label: label.charAt(0).toUpperCase() + label.slice(1), key, costoTotal: 0, ventaTotal: 0, unidadesVendidas: 0, margen: 0, days: [] };

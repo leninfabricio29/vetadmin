@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { reportService } from '../services/report.service';
 
 export const useReports = (filters?: { startDate?: string; endDate?: string; limit?: number; userId?: string }) => {
+  const queryClient = useQueryClient();
   const startDate = filters?.startDate || '';
   const endDate = filters?.endDate || '';
   const limit = filters?.limit || 5;
@@ -55,14 +56,7 @@ export const useReports = (filters?: { startDate?: string; endDate?: string; lim
     operationalCosts: operationalCostsQuery.data || [],
     isLoadingOperationalCosts: operationalCostsQuery.isLoading,
     refetchAll: () => {
-      lowStockQuery.refetch();
-      topProductsQuery.refetch();
-      if (startDate && endDate) {
-        cashFlowQuery.refetch();
-        salesByDateQuery.refetch();
-        inventoryMovementsQuery.refetch();
-        operationalCostsQuery.refetch();
-      }
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
     },
   };
 };

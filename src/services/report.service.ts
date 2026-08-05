@@ -17,7 +17,7 @@ const toEndOfDay = (date: string): string => {
 export const reportService = {
   getSalesByDate: async (startDate: string, endDate: string, userId?: string): Promise<ISale[]> => {
     const { data } = await apiClient.get('/reports/sales', {
-      params: { startDate, endDate: toEndOfDay(endDate), userId },
+      params: { startDate, endDate, userId },
     });
     return data.data;
   },
@@ -43,19 +43,19 @@ export const reportService = {
   },
   getCashFlow: async (startDate?: string, endDate?: string): Promise<{ totalIngresos: number; totalEgresos: number; balance: number; movimientosCount: number }> => {
     const { data } = await apiClient.get('/reports/cash-flow', {
-      params: { startDate, endDate: endDate ? toEndOfDay(endDate) : undefined },
+      params: { startDate, endDate },
     });
     return data.data;
   },
   getInventoryMovements: async (startDate?: string, endDate?: string): Promise<IInventoryMovement[]> => {
     const { data } = await apiClient.get('/reports/inventory-movements', {
-      params: { startDate, endDate: endDate ? toEndOfDay(endDate) : undefined },
+      params: { startDate, endDate },
     });
     return data.data;
   },
   getOperationalCosts: async (startDate: string, endDate: string): Promise<IOperationalCostDay[]> => {
     const { data } = await apiClient.get('/reports/operational-costs', {
-      params: { startDate, endDate: toEndOfDay(endDate) },
+      params: { startDate, endDate },
     });
     return data.data;
   },

@@ -28,7 +28,8 @@ import {
   ShoppingBag,
   HeartPulse,
   Printer,
-  X
+  X,
+  Pencil
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import toast from 'react-hot-toast';
@@ -64,6 +65,7 @@ export default function POSPage() {
     addItem,
     removeItem,
     updateQuantity,
+    updateItemCommissions,
     setClient,
     setDiscount,
     setPaymentMethod,
@@ -108,6 +110,12 @@ export default function POSPage() {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [createdSale, setCreatedSale] = useState<any>(null);
 
+  // Edit commissions modal state
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [isEditCommissionsModalOpen, setIsEditCommissionsModalOpen] = useState(false);
+  const [editComPrincipal, setEditComPrincipal] = useState<number | ''>(100);
+  const [editComSecundario, setEditComSecundario] = useState<number | ''>(0);
+
   // Search parameters
   const [itemSearch, setItemSearch] = useState('');
   const [clientSearch, setClientSearch] = useState('');
@@ -139,6 +147,14 @@ export default function POSPage() {
   };
 
   const handleAddProduct = (p: any) => {
+    const defaultComPrincipal = p.comisiónPrincipal !== undefined
+      ? p.comisiónPrincipal
+      : (typeof p.categoría === 'object' && p.categoría?.comisiónPrincipal !== undefined ? p.categoría.comisiónPrincipal : 100);
+
+    const defaultComSecundario = p.comisiónSecundario !== undefined
+      ? p.comisiónSecundario
+      : (typeof p.categoría === 'object' && p.categoría?.comisiónSecundario !== undefined ? p.categoría.comisiónSecundario : 0);
+
     addItem({
       tipo: 'Producto',
       id: p._id,
@@ -147,10 +163,38 @@ export default function POSPage() {
       stockMax: p.stock,
       código: p.código,
       tieneIva: p.tieneIva,
-      comisiónPrincipal: p.comisiónPrincipal !== undefined ? p.comisiónPrincipal : 100,
-      comisiónSecundario: p.comisiónSecundario !== undefined ? p.comisiónSecundario : 0,
+      comisiónPrincipal: defaultComPrincipal,
+      comisiónSecundario: defaultComSecundario,
     });
     toast.success(`${p.nombre} agregado al pedido`, { duration: 1200 });
+  };
+
+  const handleOpenEditCommissions = (item: any) => {
+    setEditingItem(item);
+    setEditComPrincipal(item.comisiónPrincipal !== undefined ? item.comisiónPrincipal : 100);
+    setEditComSecundario(item.comisiónSecundario !== undefined ? item.comisiónSecundario : 0);
+    setIsEditCommissionsModalOpen(true);
+  };
+
+  const handleSaveCommissions = () => {
+    if (!editingItem) return;
+    const cp = typeof editComPrincipal === 'number' ? editComPrincipal : 0;
+    const cs = typeof editComSecundario === 'number' ? editComSecundario : 0;
+
+    if (cp < 0 || cp > 100 || cs < 0 || cs > 100) {
+      toast.error('Las comisiones deben ser números entre 0 y 100.');
+      return;
+    }
+
+    if (parseFloat((cp + cs).toFixed(2)) !== 100) {
+      toast.error('La suma de las comisiones (Principal + Secundario) debe ser exactamente igual a 100%.');
+      return;
+    }
+
+    updateItemCommissions(editingItem.id, editingItem.tipo, cp, cs);
+    toast.success(`Porcentajes actualizados para ${editingItem.nombre}`);
+    setIsEditCommissionsModalOpen(false);
+    setEditingItem(null);
   };
 
   // Confirm and submit sale
@@ -210,6 +254,8 @@ export default function POSPage() {
               producto: i.tipo === 'Producto' ? i.id : undefined,
               servicio: i.tipo === 'Servicio' ? i.id : undefined,
               cantidad: i.cantidad,
+              comisiónPrincipal: i.comisiónPrincipal,
+              comisiónSecundario: i.comisiónSecundario,
             })),
           };
 
@@ -383,7 +429,11 @@ export default function POSPage() {
                         <p className="font-semibold text-zinc-900 truncate max-w-[180px]">{i.nombre}</p>
                         <div className="text-[10px] text-zinc-450 mt-0.5 flex flex-wrap items-center gap-1.5">
                           <span>{i.tipo} {i.código && `• ${i.código}`}</span>
-
+                          {(i.comisiónPrincipal !== undefined || i.comisiónSecundario !== undefined) && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono bg-zinc-100 text-zinc-600 border border-zinc-200">
+                              {i.comisiónPrincipal ?? 100}% P / {i.comisiónSecundario ?? 0}% S
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-2.5">
@@ -406,12 +456,22 @@ export default function POSPage() {
                       <td className="py-2.5 text-right font-medium text-zinc-900">${i.precio.toFixed(2)}</td>
                       <td className="py-2.5 text-right font-bold text-zinc-950">${(i.precio * i.cantidad).toFixed(2)}</td>
                       <td className="py-2.5 text-right">
-                        <button
-                          onClick={() => removeItem(i.id, i.tipo)}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded cursor-pointer"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            title="Modificar porcentajes de comisión"
+                            onClick={() => handleOpenEditCommissions(i)}
+                            className="p-1 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded cursor-pointer"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            title="Eliminar producto"
+                            onClick={() => removeItem(i.id, i.tipo)}
+                            className="p-1 text-red-500 hover:bg-red-50 rounded cursor-pointer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -741,6 +801,112 @@ export default function POSPage() {
 
             <div className="text-center text-[10px] text-zinc-450 pt-3 border-t border-dashed border-zinc-250">
               ¡Gracias por confiar la salud de tu mascota en nosotros!
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal: Modificar Porcentajes de Comisión de Producto */}
+      <Modal
+        isOpen={isEditCommissionsModalOpen}
+        onClose={() => {
+          setIsEditCommissionsModalOpen(false);
+          setEditingItem(null);
+        }}
+        title="Modificar Porcentajes del Producto"
+      >
+        {editingItem && (
+          <div className="space-y-4 text-xs font-sans">
+            <div className="p-3 border rounded-lg bg-zinc-50/70 space-y-1">
+              <p className="text-xs font-bold text-zinc-900">{editingItem.nombre}</p>
+              <p className="text-[10px] text-zinc-500">
+                Código: {editingItem.código || 'N/A'} • Precio Unitario: ${editingItem.precio.toFixed(2)}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Comisión Principal (%)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={editComPrincipal}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : parseFloat(e.target.value);
+                    setEditComPrincipal(val);
+                    if (typeof val === 'number' && !isNaN(val)) {
+                      setEditComSecundario(Math.max(0, Math.min(100, 100 - val)));
+                    }
+                  }}
+                />
+                <span className="text-[10px] text-zinc-400 mt-1 block">Veterinario / Médico</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Comisión Secundaria (%)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={editComSecundario}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : parseFloat(e.target.value);
+                    setEditComSecundario(val);
+                    if (typeof val === 'number' && !isNaN(val)) {
+                      setEditComPrincipal(Math.max(0, Math.min(100, 100 - val)));
+                    }
+                  }}
+                />
+                <span className="text-[10px] text-zinc-400 mt-1 block">Asistente / Colaborador</span>
+              </div>
+            </div>
+
+            {/* Sum Indicator */}
+            {(() => {
+              const cp = typeof editComPrincipal === 'number' ? editComPrincipal : 0;
+              const cs = typeof editComSecundario === 'number' ? editComSecundario : 0;
+              const totalSum = parseFloat((cp + cs).toFixed(2));
+              const isValid = totalSum === 100;
+
+              return (
+                <div
+                  className={`p-2.5 rounded-lg border text-xs flex items-center justify-between ${
+                    isValid
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-amber-50 border-amber-200 text-amber-800'
+                  }`}
+                >
+                  <span>Suma Total de Porcentajes:</span>
+                  <span className="font-bold font-mono text-sm">{totalSum}%</span>
+                </div>
+              );
+            })()}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-zinc-100">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsEditCommissionsModalOpen(false);
+                  setEditingItem(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveCommissions}
+                className="bg-zinc-900 text-white hover:bg-zinc-800"
+              >
+                Guardar Cambios
+              </Button>
             </div>
           </div>
         )}
